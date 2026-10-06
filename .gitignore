@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+.DS_Store
+n8n/
+workflows/*.json
+!workflows/job-tracker-main.json
+*.log
+
+profiles/
+
+*.sqlite
+*.sqlite-*
+*.dump
+*.backup

@@ -1,0 +1,7 @@
+node_modules
+n8n
+.env
+.git
+dist
+tests
+profiles

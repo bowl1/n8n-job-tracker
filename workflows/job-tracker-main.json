@@ -1,0 +1,109 @@
+{
+  "id": "NiflJqczaUlMfJlk",
+  "name": "Job Tracker Main Flow",
+  "active": false,
+  "nodes": [
+    {
+      "id": "manual-trigger",
+      "name": "Manual discovery",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "fetch-public-search",
+      "name": "Fetch real public jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        540,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://job-api:3001/api/jobs/public-search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"keywords\": \"software engineer data AI\", \"location\": \"Copenhagen, Denmark\", \"page\": 1, \"limit\": 25}",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "process-jobs",
+      "name": "Deduplicate, filter and evaluate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        850,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://job-api:3001/api/jobs/process",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ items: $json.items, profileVersion: 'auto' }) }}",
+        "options": {
+          "timeout": 1800000
+        }
+      }
+    },
+    {
+      "id": "verify-results",
+      "name": "Check results and open human review",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1170,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\nif (result.errors > 0) {\n  const errors = result.results.filter(job => job.status === 'error');\n  throw new Error(JSON.stringify({ message: 'Some jobs failed; successful jobs were saved. Re-execute to retry failed jobs.', errors }));\n}\nreturn [{ json: { ...result, message: result.total ? 'Jobs saved. Open reviewUrl to approve or skip; no applications were sent.' : 'No public jobs returned by this search. Try different keywords or another page.' } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Manual discovery": {
+      "main": [
+        [
+          {
+            "node": "Fetch real public jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch real public jobs": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate, filter and evaluate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicate, filter and evaluate": {
+      "main": [
+        [
+          {
+            "node": "Check results and open human review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
